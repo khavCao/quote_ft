@@ -1,6 +1,9 @@
-// ignore_for_file: unused_local_variable
+// ignore_for_file: unused_local_variable, use_key_in_widget_constructors, library_private_types_in_public_api, use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:quote/api/quote_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NewQuoteScreen extends StatefulWidget {
   @override
@@ -19,20 +22,39 @@ class _NewQuoteScreenState extends State<NewQuoteScreen> {
     super.dispose();
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       final quote = _quoteController.text;
       final creditTo = _creditToController.text;
+      final data = {'text': quote, 'credit_to': creditTo};
 
-      // You can add your logic to save the quote here
+     try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await QuoteApi().CreateQuote(route: "quote", token: token!, data: data);
 
+      final responseData = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData['message'] ?? 'Quote added successfully')),
+        );
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData['message'] ?? 'An error occurred while adding the quote')),
+        );
+      }
+        // Clear the form
+        _quoteController.clear();
+        _creditToController.clear();
+      //       Navigator.of(context).pushReplacement(
+      //   MaterialPageRoute(builder: (context) => const HomeScreen()),
+      // );
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Quote added successfully!')),
+        SnackBar(content: Text('An error occurred while adding the quote')),
       );
-
-      // Clear the form
-      _quoteController.clear();
-      _creditToController.clear();
+    }
     }
   }
 
@@ -42,7 +64,7 @@ class _NewQuoteScreenState extends State<NewQuoteScreen> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.purple[100]!, Colors.purple[300]!],
+            colors: [Colors.purple[300]!, Colors.purple[700]!],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -76,12 +98,6 @@ class _NewQuoteScreenState extends State<NewQuoteScreen> {
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the credit';
-                  }
-                  return null;
-                },
               ),
               SizedBox(height: 20),
               ElevatedButton(

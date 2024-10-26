@@ -18,12 +18,14 @@ class Quote {
   final String text;
   final String creditTo;
   final int favs;
+   final int user_id;
 
   Quote({
     required this.id,
     required this.text,
     required this.creditTo,
     required this.favs,
+    required this.user_id,
   });
 
   factory Quote.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class Quote {
       text: json['text'],
       creditTo: json['credit_to'],
       favs: json['favs'],
+      user_id: json['user_id'],
     );
   }
 }

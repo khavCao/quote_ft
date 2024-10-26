@@ -1,5 +1,6 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, prefer_is_empty
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -14,18 +15,42 @@ class FavoriteScreen extends StatefulWidget {
   State<FavoriteScreen> createState() => _FavoriteScreenState();
 }
 
-class _FavoriteScreenState extends State<FavoriteScreen> {
-  List<Quote> quotes = [];
+class _FavoriteScreenState extends State<FavoriteScreen> with SingleTickerProviderStateMixin {
+  List<Quote> quoteSave = [];
+  List<Quote> quoteByUser = [];
+  late TabController _tabController;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    getData();
+    getQuoteByUser();
+    _tabController = TabController(length: choices.length, vsync: this);
+    
+    // Start 2-second timer to toggle isLoading
+    Timer(Duration(seconds: 2), () {
+      setState(() {
+        isLoading = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   void getData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
-    final data = await FavoriteApi().FetchAll(route: "quote", token: token!);
+    final data = await FavoriteApi().FetchAll(route: "quote/save", token: token!);
 
     if (data.statusCode == 200) {
       final jsonData = json.decode(data.body);
       setState(() {
-        quotes = (jsonData['quotes'] as List)
+        quoteSave = (jsonData['quotes'] as List)
             .map((data) => Quote.fromJson(data))
             .toList();
       });
@@ -34,17 +59,28 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    getData();
+  void getQuoteByUser() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final data = await FavoriteApi().FetchAll(route: "quote/user", token: token!);
+
+    if (data.statusCode == 200) {
+      final jsonData = json.decode(data.body);
+      setState(() {
+        quoteByUser = (jsonData['quotes'] as List)
+            .map((data) => Quote.fromJson(data))
+            .toList();
+      });
+    } else {
+      print('Failed to load data!');
+    }
   }
 
-  Widget _buildListView() {
-    if (quotes.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+  Widget _buildListView(List<Quote> quotes) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (quotes.isEmpty) {
+      return const Center(child: Text('No data found'));
     } else {
       return ListView.builder(
         itemCount: quotes.length,
@@ -59,7 +95,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                 children: [
                   SlidableAction(
                     onPressed: (context) {
-                      // Add a favorite action here
+                      // Add delete functionality here
                     },
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
@@ -69,7 +105,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                   ),
                   SlidableAction(
                     onPressed: (context) {
-                      // Add a favorite action here
+                      // Add more functionality here
                     },
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
@@ -116,7 +152,39 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildListView(),
+      appBar: AppBar(
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: choices.map<Widget>((Choice choice) {
+            return Tab(
+              text: choice.title,
+              icon: Icon(choice.icon),
+            );
+          }).toList(),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: choices.map((Choice choice) {
+          return Padding(
+            padding: const EdgeInsets.all(2),
+            child: choice == choices[0]
+                ? _buildListView(List<Quote>.from(quoteByUser))
+                : _buildListView(List<Quote>.from(quoteSave)),
+          );
+        }).toList(),
+      ),
     );
   }
 }
+
+class Choice {
+  final String title;
+  final IconData icon;
+  const Choice({required this.title, required this.icon});
+}
+
+const List<Choice> choices = <Choice>[
+  Choice(title: 'Yours', icon: Icons.person),
+  Choice(title: 'Save', icon: Icons.save),
+];

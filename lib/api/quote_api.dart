@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:convert';
 import 'package:quote/models/quote_model.dart';
 import 'package:http/http.dart' as http;
@@ -42,5 +44,18 @@ class QuoteApi {
     } else {
       throw Exception('API error');
     }
+  }
+
+
+  Future<http.Response> CreateQuote({required String route, required token, required Map<String, String> data}) async {
+    final response = await http.post(
+      Uri.parse('http://127.0.0.1:8081/api/$route'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+    return response;
   }
 }

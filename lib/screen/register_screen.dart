@@ -4,7 +4,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:quote/api/user_api.dart';
+import 'package:quote/screen/home_screen.dart';
 import 'package:quote/screen/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -32,8 +34,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final response = jsonDecode(result.body);
     if (response['status'] == 200) {
+      SharedPreferences preferences = await SharedPreferences.getInstance();
+      String userJson = jsonEncode(response['user']);
+      await preferences.setString('user', userJson);
+      await preferences.setString('token', response['access_token']);
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(response['message'])),
